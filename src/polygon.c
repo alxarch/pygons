@@ -29,13 +29,13 @@
 
 // Polygon _____________________________________________________________
 
-struct Polygon * 
+Polygon * 
 pl_init(const uint count)
 {
-    struct Polygon * pl= (struct Polygon *)calloc(1, sizeof(struct Polygon));
+    Polygon * pl= (Polygon *)calloc(1, sizeof(Polygon));
     assert(pl);
     
-    pl->points= (struct PL_Vertex *)malloc(count * sizeof(struct PL_Vertex));
+    pl->points= (PolyVert *)malloc(count * sizeof(PolyVert));
     assert(pl->points);
     
     pl->size= count;
@@ -49,40 +49,40 @@ pl_init(const uint count)
  * Also allows to create transformed copies of the struct Polygon by using a 
  * function that copies the points.
  * 
- * @param struct Polygon * 	pl		Pointer to the polygon to be copied.
+ * @param Polygon * 	pl		Pointer to the polygon to be copied.
  * @param void * 		   	cpy 	A pointer to a function to transform the coords.
  * @param int   			holes 	Whether or not to also copy the holes.
  * 
- * @return struct Polygon *  A pointer to the copied polygon.
+ * @return Polygon *  A pointer to the copied polygon.
  * 
  */
-struct Polygon * 
-pl_copy(const struct Polygon * pl, 
-		void (*cpy)(vec * dest, const vec * const src), 
+Polygon * 
+pl_copy(const Polygon * pl, 
+		void (*cpy)(vec dest, const vec src), 
 		const int holes)
 {
     assert(pl);
     
-    struct Polygon * cp= (struct Polygon *)malloc(sizeof(struct Polygon));
+    Polygon * cp= (Polygon *)malloc(sizeof(Polygon));
     assert(cp);
     
-    memcpy(cp, pl, sizeof(struct Polygon));
+    memcpy(cp, pl, sizeof(Polygon));
     
-    cp->points= (struct PL_Vertex *)malloc(pl->size * sizeof(struct PL_Vertex));
+    cp->points= (PolyVert *)malloc(pl->size * sizeof(PolyVert));
     assert(cp->points);
     
     uint i;
     
     if (cpy){
         for (i= 0; i < pl->last; i++){
-            cpy(&cp->points[i].co, &pl->points[i].co);
+            cpy(cp->points[i].co, pl->points[i].co);
             cp->points[i].flags = pl->points[i].flags;
         }
-        cpy(&cp->bb.min, &pl->bb.min);
-        cpy(&cp->bb.max, &pl->bb.max);
+        cpy(cp->bb.min, pl->bb.min);
+        cpy(cp->bb.max, pl->bb.max);
     }
     else{
-        memcpy(cp->points, pl->points, pl->last * sizeof(struct PL_Vertex));
+        memcpy(cp->points, pl->points, pl->last * sizeof(PolyVert));
         // min & max have already been copied by memcpy.
     }
     
@@ -94,11 +94,11 @@ pl_copy(const struct Polygon * pl,
 /*
  * Frees memory of struct Polygon and nullifies the pointer.
  */
-void pl_kill(struct Polygon ** pl_pt)
+void pl_kill(Polygon ** pl_pt)
 {
 	assert(pl_pt);
 	
-	struct Polygon * pl= *pl_pt;
+	Polygon * pl= *pl_pt;
 	
 	if(pl){
 		if (pl->points) free(pl->points);
@@ -108,42 +108,44 @@ void pl_kill(struct Polygon ** pl_pt)
 }
 
 static void 
-pl_check_bounds(struct Polygon * pl, const vec *p)
+pl_check_bounds(Polygon * pl, const vec p)
 {
     if (pl->last > 1){
 		check_bounds(&pl->bb, p);
     }
     else{
-        v_copy(&pl->bb.min, p);
-        v_copy(&pl->bb.max, p);
+        v_cpy(pl->bb.min, p);
+        v_cpy(pl->bb.max, p);
     }
 }
 
-enum axis_pair 
-pl_best_axis_pair(struct Polygon * pl)
+AxisPair 
+pl_best_axis_pair(Polygon * pl)
 {
 	vec n;
-	pl_normal(pl, &n);
-	return fabs(n.z) > ZEROLENGTH ? XY : (fabs(n.x) > fabs(n.y) ? XZ : YZ);
+	pl_normal(pl, n);
+	return fabs(n[2]) > ZEROLENGTH ? XY : (fabs(n[0]) > fabs(n[1]) ? XZ : YZ);
 }
 
-static void pl_recalc_bounds(struct Polygon * pl)
+static void 
+pl_recalc_bounds(Polygon * pl)
 {
     assert(pl);
     
-    v_copy(&pl->bb.min, &pl->points[0].co);
-    v_copy(&pl->bb.max, &pl->points[0].co);
+    v_cpy(pl->bb.min, pl->points[0].co);
+    v_cpy(pl->bb.max, pl->points[0].co);
     
     uint i;
     for (i=1; i < pl->last; i++){
-        check_bounds(&pl->bb, &pl->points[i].co);
+        check_bounds(&pl->bb, pl->points[i].co);
 	}
 }
 
-static struct Polygon * pl_check_pointer(struct Polygon ** pl_pt){
+static Polygon * 
+pl_check_pointer(Polygon ** pl_pt){
 	assert(pl_pt);
 	
-	struct Polygon * result= *pl_pt;
+	Polygon * result= *pl_pt;
 	
 	if (!result){
 		result= *pl_pt= pl_init(10);
@@ -152,25 +154,25 @@ static struct Polygon * pl_check_pointer(struct Polygon ** pl_pt){
 	return result;
 }
 
-void pl_expand(struct Polygon * pl, const uint extra_space)
+void pl_expand(Polygon * pl, const uint extra_space)
 {
     assert(pl);
     
-    pl->points= (struct PL_Vertex *)realloc(pl->points, pl->size += extra_space);
+    pl->points= (PolyVert *)realloc(pl->points, pl->size += extra_space);
     assert(pl->points);
 }
 
-struct PL_Vertex * 
-pl_append(struct Polygon **pl_pt, const vec * const co, int flags)
+PolyVert * 
+pl_append(Polygon **pl_pt, const vec co, int flags)
 {
     assert(co);
 
-	struct Polygon * pl= pl_check_pointer(pl_pt);
+	Polygon * pl= pl_check_pointer(pl_pt);
     
     if (pl->last > pl->size) pl_expand(pl, pl->size);
 	
-    struct PL_Vertex * vx= pl->points + pl->last++;
-    vx->co= *co;
+    PolyVert * vx= pl->points + pl->last++;
+    v_cpy(vx->co, co);
     vx->flags= flags;
     
     pl_check_bounds(pl, co);
@@ -178,31 +180,32 @@ pl_append(struct Polygon **pl_pt, const vec * const co, int flags)
     return vx;
 }
 
-struct PL_Vertex * 
-pl_append_vertex(struct Polygon ** pl_pt, const struct PL_Vertex * const pt)
+PolyVert * 
+pl_append_vertex(Polygon ** pl_pt, const PolyVert * const pt)
 {
     assert(pt);
     
-    struct Polygon * pl= pl_check_pointer(pl_pt);
+    Polygon * pl= pl_check_pointer(pl_pt);
     
     if (pl->last > pl->size) pl_expand(pl, pl->size);
     
-    polyvert * vx= pl->points + pl->last++;
+    PolyVert * vx= pl->points + pl->last++;
     *vx= *pt;
     
-    pl_check_bounds(pl, &pt->co);
+    pl_check_bounds(pl, pt->co);
     
     return vx;
 }
 
-void pl_check_size(struct Polygon * pl)
+void pl_check_size(Polygon * pl)
 {
 	if(pl->last < pl->size) {
 		pl_expand(pl, pl->size);
 	}
 }
 
-polyvert * pl_insert_point(struct Polygon * pl, uint pos, const vec * p)
+PolyVert * 
+pl_insert_point(Polygon * pl, uint pos, const vec p)
 {
     assert(pl);
     assert(p);
@@ -214,8 +217,8 @@ polyvert * pl_insert_point(struct Polygon * pl, uint pos, const vec * p)
         pl->points[j]= pl->points[i];
 	}
 	
-    polyvert *vx= pl->points + i;
-    vx->co= *p;
+    PolyVert *vx= pl->points + i;
+    v_cpy(vx->co, p);
     vx->flags= 0;
     
     pl_check_bounds(pl, p);
@@ -223,7 +226,7 @@ polyvert * pl_insert_point(struct Polygon * pl, uint pos, const vec * p)
     return vx;
 }
 
-polyvert * pl_insert_vertex(struct Polygon * pl, uint pos, const polyvert * p)
+PolyVert * pl_insert_vertex(Polygon * pl, uint pos, const PolyVert * p)
 {
     assert(pl);
     assert(p);
@@ -236,23 +239,23 @@ polyvert * pl_insert_vertex(struct Polygon * pl, uint pos, const polyvert * p)
         pl->points[j]= pl->points[i];
 	}
 	
-    polyvert * vx= pl->points + i;
+    PolyVert * vx= pl->points + i;
     *vx= *p;
     
-    pl_check_bounds(pl, &p->co);
+    pl_check_bounds(pl, p->co);
     
     return vx;
 }
 
-polyvert * pl_pop(struct Polygon * pl)
+PolyVert * pl_pop(Polygon * pl)
 {
     assert(pl);
     
     if (pl->last){
-        polyvert * result= (polyvert *)malloc(sizeof(polyvert));
+        PolyVert * result= (PolyVert *)malloc(sizeof(PolyVert));
         pl->last--;
-        polyvert * last= pl->points + pl->last;
-        v_copy(&result->co, &last->co);
+        PolyVert * last= pl->points + pl->last;
+        v_cpy(result->co, last->co);
         result->flags= last->flags;
         
         return result;
@@ -261,15 +264,15 @@ polyvert * pl_pop(struct Polygon * pl)
     return NULL;
 }
 
-polyvert * pl_remove(struct Polygon * pl, const uint idx)
+PolyVert * pl_remove(Polygon * pl, const uint idx)
 {
     assert(pl);
     
     if (idx < pl->last){
-        polyvert *result= (polyvert*)malloc(sizeof(polyvert));
-        memcpy(result, pl->points+idx, sizeof(polyvert));
+        PolyVert *result= (PolyVert*)malloc(sizeof(PolyVert));
+        memcpy(result, pl->points+idx, sizeof(PolyVert));
         uint i=idx;
-        polyvert *vx= pl->points + i++;
+        PolyVert *vx= pl->points + i++;
         for(;i < pl->last; i++)
                 *vx++=pl->points[i];
         pl->last--;
@@ -278,7 +281,8 @@ polyvert * pl_remove(struct Polygon * pl, const uint idx)
     return NULL;
 }
 
-polyvert * pl_remove_vertex(struct Polygon * pl, const polyvert * const vx)
+PolyVert * 
+pl_remove_vertex(Polygon * pl, const PolyVert * const vx)
 {
     assert(pl);
     assert(vx);
@@ -291,7 +295,8 @@ polyvert * pl_remove_vertex(struct Polygon * pl, const polyvert * const vx)
     return NULL;
 }
 
-void pl_extend_verts(struct Polygon * pl, const polyvert * const points, uint count)
+void 
+pl_extend_verts(Polygon * pl, const PolyVert * const points, uint count)
 {
     assert(pl);
     assert(points);
@@ -304,12 +309,13 @@ void pl_extend_verts(struct Polygon * pl, const polyvert * const points, uint co
 	}
 }
 
-void pl_extend_points(struct Polygon * pl, const vec * const points, uint count)
+void 
+pl_extend_points(Polygon * pl, const vec * points, uint count)
 {
     assert(pl);
     assert(points);
     
-	polyvert *tmp;
+	PolyVert *tmp;
 	
 	pl_check_size(pl);
 	
@@ -317,21 +323,27 @@ void pl_extend_points(struct Polygon * pl, const vec * const points, uint count)
     for (i=0 ; i < count; i++){
 		tmp= pl->points + pl->last++;
 		tmp->flags= 0;
-		tmp->co= points[i];
+		v_cpy(tmp->co, points[i]);
 	}
 }
 
-int pl_add_hole(struct Polygon * pl, struct Polygon * hole)
+int 
+pl_add_hole(Polygon * pl, Polygon * hole)
 {
     //TODO:fix this
     pll_append(&pl->holes, hole);
     return 1;
 }
 
-int pl_rel_point_2d(const struct Polygon * pl, const vec * const p, enum axis_pair ax, const int do_holes)
+int 
+pl_rel_point_2d(const Polygon * pl, 
+				const vec p, 
+				AxisPair ax, 
+				const int do_holes)
 {
     assert(pl);
     assert(p);
+    
     if (!point_in_bounds(&pl->bb, p)) return OUT;
     
     uint i;
@@ -381,7 +393,7 @@ int pl_rel_point_2d(const struct Polygon * pl, const vec * const p, enum axis_pa
     return (wn) ? IN : OUT;
 }
 
-double pl_signed_area_2d(const struct Polygon * pl, enum axis_pair ax)
+double pl_signed_area_2d(const Polygon * pl, AxisPair ax)
 {
     assert(pl);
     
@@ -391,7 +403,7 @@ double pl_signed_area_2d(const struct Polygon * pl, enum axis_pair ax)
     
     uint i, j;
     for (i=(pl->last - 1), j=0; j < pl->last; i=j++){
-        area+= v_perp(&pl->points[i].co, &pl->points[j].co, ax);
+        area += v_perp(pl->points[i].co, pl->points[j].co, ax);
 	}
     
     area/= 2.0;
@@ -399,7 +411,8 @@ double pl_signed_area_2d(const struct Polygon * pl, enum axis_pair ax)
     return area;
 }
 
-void pl_area_vec(const struct Polygon * pl, vec * dest)
+void 
+pl_area_vec(const Polygon * pl, vec dest)
 {
     assert(pl);
     
@@ -410,12 +423,13 @@ void pl_area_vec(const struct Polygon * pl, vec * dest)
     uint i, j;
     vec tmp;
     for (i=pl->last - 1, j=0; j < pl->last; i=j++){
-		v_cross(&tmp, &pl->points[i].co, &pl->points[j].co);
-		v_add(dest, dest, &tmp);
+		v_cross(tmp, pl->points[i].co, pl->points[j].co);
+		v_add(dest, dest, tmp);
 	}
 }
 
-double pl_area_3d(const struct Polygon * pl, const int do_holes)
+double 
+pl_area_3d(const Polygon * pl, const int do_holes)
 {
     assert(pl);
     
@@ -424,21 +438,22 @@ double pl_area_3d(const struct Polygon * pl, const int do_holes)
     if (pl->last < 3) return area;
     
     vec tmp;
-    pl_area_vec(pl, &tmp);
-    area= v_length(&tmp);
+    pl_area_vec(pl, tmp);
+    area= v_length(tmp);
     
     if (do_holes && pl->holes){
         uint i;
         for (i=0; i < pl->holes->last; i++){
-            pl_area_vec(pl->holes->polys[i], &tmp);
-            area-= v_length(&tmp);
+            pl_area_vec(pl->holes->polys[i], tmp);
+            area-= v_length(tmp);
         }
     }
     
     return area;
 }
 
-double pl_area_2d(const struct Polygon * pl, enum axis_pair ax, const int do_holes)
+double 
+pl_area_2d(const Polygon * pl, AxisPair ax, const int do_holes)
 {
     assert(pl);
     
@@ -457,28 +472,31 @@ double pl_area_2d(const struct Polygon * pl, enum axis_pair ax, const int do_hol
     return area;
 }
 
-enum PL_Order pl_order_2d(const struct Polygon * pl, enum axis_pair ax)
+enum PL_Order 
+pl_order_2d(const Polygon * pl, AxisPair ax)
 {
     return (pl_signed_area_2d(pl, ax) > 0.0) ? CW : CCW;
 }
 
-enum PL_Order pl_order(const struct Polygon * pl)
+enum PL_Order 
+pl_order(const Polygon * pl)
 {
     vec n;
     
-    pl_normal(pl, &n);
+    pl_normal(pl, n);
     
-    if (fabs(n.z) < ZEROLENGTH){
-        return (fabs(n.x) > fabs(n.y)) ? 
+    if (fabs(n[2]) < ZEROLENGTH){
+        return (fabs(n[0]) > fabs(n[1])) ? 
 			pl_order_2d(pl, XZ) : 
 			pl_order_2d(pl, YZ);
     }
-    else{
-        return pl_order_2d(pl, XY);
-	}
+    
+    return pl_order_2d(pl, XY);
+	
 }
     
-void pl_normal(const struct Polygon * pl, vec *normal)
+void 
+pl_normal(const Polygon * pl, vec normal)
 {
     assert(pl);
     
@@ -489,31 +507,33 @@ void pl_normal(const struct Polygon * pl, vec *normal)
 	}
 }
 
-int pl_rel_plane(const struct Polygon * pl, const plane * const pn, int* rmap)
+int 
+pl_rel_plane(const Polygon * pl, const Plane * const pn, int * rmap)
 {
 	assert(pl);
 	assert(pn);
 	
-    int R= 0;
+    int R = 0;
     uint i;
     if (rmap){
         for (i=0; i < pl->last; i++)
-            R|= *rmap++= rel_point_plane(&pl->points[i].co, pn);
+            R |= *rmap++= rel_point_plane(pl->points[i].co, pn);
         
     }
     else{
         for (i=0; i < pl->last; i++)
-            R|= rel_point_plane(&pl->points[i].co, pn);
+            R |= rel_point_plane(pl->points[i].co, pn);
     }
     return R;
 }
 
-int pl_self_intersects(const struct Polygon * pl, enum axis_pair ax)
+int 
+pl_self_intersects(const Polygon * pl, AxisPair ax)
 {
     vec diffs[pl->last];
     uint i, j;
     for(i=pl->last - 1, j=0; j < pl->last; i=j++){
-		v_sub(diffs + i, &pl->points[j].co, &pl->points[i].co);
+		v_sub(diffs[i], pl->points[j].co, pl->points[i].co);
 	}
 	
     uint k, m;
@@ -524,16 +544,16 @@ int pl_self_intersects(const struct Polygon * pl, enum axis_pair ax)
 			
             if (i == k || i == m || j == k || j == m) continue;
             
-            d= v_perp(diffs + i, diffs + k, ax);
+            d = v_perp(diffs[i], diffs[k], ax);
             
             if (fabs(d) < E) continue;
             
-            v_sub(&w, &pl->points[i].co, &pl->points[k].co);
+            v_sub(w, pl->points[i].co, pl->points[k].co);
             
-            ratio= v_perp(diffs + i, &w, ax) / d;
+            ratio = v_perp(diffs[i], w, ax) / d;
             
             if (0.0 < ratio && ratio < 1.0){
-                ratio= v_perp(diffs + k, &w, ax) / d;
+                ratio = v_perp(diffs[k], w, ax) / d;
                 if (0.0 < ratio && ratio < 1.0) return 1;
             }
         }
@@ -542,7 +562,8 @@ int pl_self_intersects(const struct Polygon * pl, enum axis_pair ax)
     return 0;
 }
 
-uint pl_simplify_2d(struct Polygon * pl, enum axis_pair ax)
+uint 
+pl_simplify_2d(Polygon * pl, AxisPair ax)
 {
     assert(pl);
     
@@ -551,14 +572,14 @@ uint pl_simplify_2d(struct Polygon * pl, enum axis_pair ax)
     uint count= 0;
     uint i, j;
     vec diffs[pl->last];
-    polyvert *new_points= (polyvert*)malloc(pl->last * sizeof(polyvert));
+    PolyVert *new_points= (PolyVert *)malloc(pl->last * sizeof(PolyVert));
     assert(new_points);
     
     for (i=(pl->last - 1), j=0; j < pl->last; i=j++){
-        v_sub(diffs + i, &pl->points[i].co, &pl->points[j].co);
+        v_sub(diffs[i], pl->points[i].co, pl->points[j].co);
 	}
     for (i=(pl->last - 1), j= 0; j < pl->last; i=j++){
-        if (fabs(v_perp(diffs + i, diffs + j, ax)) > ZEROAREA)
+        if (fabs(v_perp(diffs[i], diffs[j], ax)) > ZEROAREA)
             new_points[count++]= pl->points[j];
     }
     
@@ -575,16 +596,17 @@ uint pl_simplify_2d(struct Polygon * pl, enum axis_pair ax)
     return count;
 };
 
-uint pl_simplify_3d(struct Polygon * pl)
+uint 
+pl_simplify_3d(Polygon * pl)
 {
     assert(pl);
     if (pl->last < 3) return pl->last;
 
 	vec n;
-    pl_normal(pl, &n);
-	enum axis_pair ax;
-	if (fabs(n.z) < ZEROLENGTH){
-		ax= (fabs(n.y) > fabs(n.x)) ? XZ : YZ;
+    pl_normal(pl, n);
+	AxisPair ax;
+	if (fabs(n[2]) < ZEROLENGTH){
+		ax= (fabs(n[1]) > fabs(n[0])) ? XZ : YZ;
 	}
 	else{
 		ax= XY;
@@ -593,14 +615,15 @@ uint pl_simplify_3d(struct Polygon * pl)
 	return pl_simplify_2d(pl, ax);
 };
 
-uint pl_rm_doubles_2d(struct Polygon * pl, enum axis_pair ax)
+uint 
+pl_rm_doubles_2d(Polygon * pl, AxisPair ax)
 {
-    polyvert *new_points= (polyvert*)malloc(pl->last * sizeof(polyvert));
+    PolyVert *new_points= (PolyVert*)malloc(pl->last * sizeof(PolyVert));
     assert(new_points);
     
     uint i, j, count= 0;
     for (i= (pl->last - 1), j= 0; j < pl->last; i=j++){
-        if (!same_2d(&pl->points[i].co, &pl->points[j].co, ax)){
+        if (!same_2d(pl->points[i].co, pl->points[j].co, ax)){
             new_points[count++]= pl->points[j];
         }
     }
@@ -622,14 +645,14 @@ uint pl_rm_doubles_2d(struct Polygon * pl, enum axis_pair ax)
     return count;
 }
 
-uint pl_rm_doubles_3d(struct Polygon * pl)
+uint pl_rm_doubles_3d(Polygon * pl)
 {
-    polyvert *new_points= (polyvert*)malloc(pl->last * sizeof(polyvert));
+    PolyVert * new_points = (PolyVert *)malloc(pl->last * sizeof(PolyVert));
     assert(new_points);
     
-    uint i, j, count= 0;
+    uint i, j, count=0;
     for (i= (pl->last - 1), j= 0; j < pl->last; i=j++){
-        if (!same_3d(&pl->points[i].co, &pl->points[j].co)){
+        if (!same_3d(pl->points[i].co, pl->points[j].co)){
             new_points[count++]= pl->points[j];
         }
     }
@@ -652,14 +675,14 @@ uint pl_rm_doubles_3d(struct Polygon * pl)
 }
 
 // keeps first point same
-void pl_reverse(struct Polygon * pl)
+void pl_reverse(Polygon * pl)
 {
     assert(pl);
     
     if (pl->last < 3) return; //nothing to reverse
     
-    polyvert *rpoints= (polyvert *)calloc(pl->size, sizeof(polyvert));
-    polyvert *last= pl->points + pl->last - 1;
+    PolyVert *rpoints = (PolyVert *)calloc(pl->size, sizeof(PolyVert));
+    PolyVert *last = pl->points + pl->last - 1;
     
     uint i;
     rpoints[0]= pl->points[0];
@@ -678,44 +701,47 @@ void pl_reverse(struct Polygon * pl)
     }
 }
 
-void pl_project_to_plane(struct Polygon * pl, 
-                         const plane * const pn, 
-                         const vec * const direction)
+void pl_project_to_plane(Polygon * pl, 
+                         const Plane * const pn, 
+                         const vec direction)
 {
     assert(pl);
     assert(pn);
-    assert(direction);
     
-    double d= v_dot(&pn->normal, direction);
-    assert(fabs(d) > E);// otherwise projection is impossible
-    vec tmp, *pt;
+    double d= v_dot(pn->normal, direction);
+    
+    // otherwise projection is impossible
+    assert(fabs(d) > E);
+    
+    vec tmp;
+    double * pt;
     uint i;
     double N;
     for (i=0; i < pl->last; i++){
-		pt= &pl->points[i].co;
-        v_sub(&tmp, pt, &pn->point);
-        N= -v_dot(&pn->normal, &tmp);
-        v_scale(&tmp, direction, N/d);
-        v_add(pt, pt, &tmp);
+		pt= pl->points[i].co;
+        v_sub(tmp, pt, pn->point);
+        N= -v_dot(pn->normal, tmp);
+        v_scale(tmp, direction, N/d);
+        v_add(pt, pt, tmp);
     }
-    v_sub(&tmp, &pl->bb.min, &pn->point);
-    N= -v_dot(&pn->normal, &tmp);
-    v_scale(&tmp, direction, N/d);
-    v_add(&pl->bb.min, &pl->bb.min, &tmp);
+    v_sub(tmp, pl->bb.min, pn->point);
+    N= -v_dot(pn->normal, tmp);
+    v_scale(tmp, direction, N/d);
+    v_add(pl->bb.min, pl->bb.min, tmp);
     
-    v_sub(&tmp, &pl->bb.max, &pn->point);
-    N= -v_dot(&pn->normal, &tmp);
-    v_scale(&tmp, direction, N/d);
-    v_add(&pl->bb.max, &pl->bb.max, &tmp);
+    v_sub(tmp, pl->bb.max, pn->point);
+    N= -v_dot(pn->normal, tmp);
+    v_scale(tmp, direction, N/d);
+    v_add(pl->bb.max, pl->bb.max, tmp);
 }
 			
-int pl_split_by_plane(struct Polygon * pl, 
-					  const struct Plane * pln, 
-					  struct PL_List * fparts, 
-					  struct PL_List * bparts
-					 )
+int 
+pl_split_by_plane(Polygon * pl, 
+				  Plane * pln, 
+				  PolyList * fparts, 
+				  PolyList * bparts)
 {
-	struct SplitGraph * sg = build_split_graph(pl, pln);
+	SplitGraph * sg = build_split_graph(pl, pln);
 	
 	switch(sg->r){
 		case ON:
@@ -741,13 +767,14 @@ int pl_split_by_plane(struct Polygon * pl,
 /*
  * Initializes a PL_List struct.
  */
-struct PL_List * 
+ 
+PolyList * 
 pll_init(const uint count)
 {
-    struct PL_List * pll= (struct PL_List *)calloc(1, sizeof(struct PL_List));
+    PolyList * pll= (PolyList *)calloc(1, sizeof(PolyList));
     assert(pll);
     
-    pll->polys= (struct Polygon**)malloc(count * sizeof(struct Polygon**));
+    pll->polys= (Polygon**)malloc(count * sizeof(Polygon**));
     assert(pll->polys);
     
     pll->size= count;
@@ -758,12 +785,13 @@ pll_init(const uint count)
 /*
  * Ensures a PL_List struct is present at the given pointer.
  */
-struct PL_List * 
-pll_check_pointer(struct PL_List ** pll_pt)
+
+PolyList * 
+pll_check_pointer(PolyList ** pll_pt)
 {
     assert(pll_pt);
     
-    struct PL_List * result= *pll_pt;
+    PolyList * result= *pll_pt;
     if (!result)
         result= *pll_pt= pll_init(10);
         
@@ -774,10 +802,12 @@ pll_check_pointer(struct PL_List ** pll_pt)
  * Increases the size of the PL_List.
  * 
  */
-void pll_expand(polylist * pll, const uint count)
+ 
+void 
+pll_expand(PolyList * pll, const uint count)
 {
     assert(pll);
-    pll->polys= (struct Polygon **)realloc(pll->polys, pll->size+= count);
+    pll->polys= (Polygon **)realloc(pll->polys, pll->size+= count);
     
     assert(pll->polys);
 }
@@ -787,7 +817,10 @@ void pll_expand(polylist * pll, const uint count)
  * Checks whether the PL_List is full and doubles its size if so.
  * 
  */
-void pll_check_size(struct PL_List * pll){
+ 
+void 
+pll_check_size(PolyList * pll)
+{
 	 if(pll->last > pll->size){
         pll_expand(pll, 2 * pll->size);
     }
@@ -797,28 +830,30 @@ void pll_check_size(struct PL_List * pll){
  * Appends a polygon to a PL_List struct
  * 
  */
-void pll_append(struct PL_List ** pll_pt, struct Polygon * const pl)
+void pll_append(PolyList ** pll_pt, Polygon * const pl)
 {
 
-    struct PL_List * pll= pll_check_pointer(pll_pt);
+    PolyList * pll= pll_check_pointer(pll_pt);
     pll_check_size(pll);
    
     pll->polys[pll->last++]= pl;
 }
 
 
-struct Polygon * pll_pop(struct PL_List * pll)
+Polygon * 
+pll_pop(PolyList * pll)
 {
     assert(pll);
     
     return (pll->last) ? pll->polys[--pll->last] : NULL;
 }
 
-polylist * pll_copy(polylist * pll, void (*copy_method)(vec * dest, const vec * const src))
+PolyList * 
+pll_copy(PolyList * pll, void (*copy_method)(vec dest, const vec src))
 {
     if (!pll) return NULL;
     
-    polylist * cp= pll_init(pll->size);
+    PolyList * cp = pll_init(pll->size);
     
     uint i;
     for (i=0; i < pll->last; i++){
@@ -828,11 +863,11 @@ polylist * pll_copy(polylist * pll, void (*copy_method)(vec * dest, const vec * 
     return cp;
 }
 
-void pll_kill(polylist ** pll_pt)
+void pll_kill(PolyList ** pll_pt)
 {
     assert(pll_pt);
     
-    polylist * pll= *pll_pt;
+    PolyList * pll= *pll_pt;
     assert(pll);
     
     if (pll->polys) free(pll->polys);
@@ -842,11 +877,11 @@ void pll_kill(polylist ** pll_pt)
     *pll_pt= NULL;
 }
 
-void pll_killall(polylist ** pll_pt)
+void pll_killall(PolyList ** pll_pt)
 {
     assert(pll_pt);
     
-    polylist * pll= *pll_pt;
+    PolyList * pll= *pll_pt;
     assert(pll);
     
     if (pll->polys){
@@ -862,7 +897,7 @@ void pll_killall(polylist ** pll_pt)
     *pll_pt= NULL;
 }
 
-int pll_remove_pl(polylist * pll, const struct Polygon * pl)
+int pll_remove_pl(PolyList * pll, const Polygon * pl)
 {
     assert(pll);
     
@@ -878,13 +913,13 @@ int pll_remove_pl(polylist * pll, const struct Polygon * pl)
     return 1;
 }
 
-struct Polygon * pll_remove(polylist * pll, const uint idx)
+Polygon * pll_remove(PolyList * pll, const uint idx)
 {
     assert(pll);
     if (idx < pll->last){
-        struct Polygon * result= pl_copy(pll->polys[idx], NULL, 1);
+        Polygon * result= pl_copy(pll->polys[idx], NULL, 1);
         uint i=idx;
-        struct Polygon ** pl_pt= pll->polys + i++;
+        Polygon ** pl_pt= pll->polys + i++;
         for (; i < pll->last; i++)
             *pl_pt++= pll->polys[i];
         pll->last--;
@@ -893,16 +928,16 @@ struct Polygon * pll_remove(polylist * pll, const uint idx)
     return NULL;
 }
 
-struct Polygon * pll_replace(polylist * pll, const uint idx, struct Polygon * pl)
+Polygon * pll_replace(PolyList * pll, const uint idx, Polygon * pl)
 {
     assert(pll);
     assert(pl);
-    struct Polygon * result= pll->polys[idx];
+    Polygon * result= pll->polys[idx];
     pll->polys[idx]= pl;
     return result;
 }
 
-int pll_replace_pl(polylist * pll, const struct Polygon * to_replace, struct Polygon * pl)
+int pll_replace_pl(PolyList * pll, const Polygon * to_replace, Polygon * pl)
 {
     assert(pll);
     
@@ -917,11 +952,11 @@ int pll_replace_pl(polylist * pll, const struct Polygon * to_replace, struct Pol
     return 0;
 }
 
-void pll_extend(polylist ** pll_pt, struct Polygon ** polys, const uint count)
+void pll_extend(PolyList ** pll_pt, Polygon ** polys, const uint count)
 {
     assert(polys);
     
-    polylist * pll= pll_check_pointer(pll_pt);
+    PolyList * pll= pll_check_pointer(pll_pt);
     
     if(pll->last + count > pll->size){
         pll_expand(pll, (pll->size * 2) + count);
@@ -933,7 +968,7 @@ void pll_extend(polylist ** pll_pt, struct Polygon ** polys, const uint count)
 	}
 }
  
-uint pll_count_points(polylist * pll)
+uint pll_count_points(PolyList * pll)
 {
     if(!pll) return 0;
     
@@ -946,8 +981,8 @@ uint pll_count_points(polylist * pll)
 
 int pl_cmp_area(const void *pl_pt_0, const void *pl_pt_1)
 {
-	double area_0= pl_area_3d(*((struct Polygon **)pl_pt_0), 1);
-	double area_1= pl_area_3d(*((struct Polygon **)pl_pt_1), 1);
+	double area_0= pl_area_3d(*((Polygon **)pl_pt_0), 1);
+	double area_1= pl_area_3d(*((Polygon **)pl_pt_1), 1);
 	if (area_0 < area_1)
 		return 1;
 	else if(area_0 > area_1)
@@ -956,7 +991,7 @@ int pl_cmp_area(const void *pl_pt_0, const void *pl_pt_1)
 		return -1;
 }
 	
-void pll_sort_by_area(polylist * pll)
+void pll_sort_by_area(PolyList * pll)
 {
 	qsort(pll->polys, pll->last, sizeof(struct Polygon*), pl_cmp_area);
 }

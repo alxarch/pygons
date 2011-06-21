@@ -21,6 +21,7 @@
 #ifndef BOOL
 #define BOOL
 
+#include <stdlib.h>
 #include "math.h"
 #include "polygon.h"
 
@@ -28,37 +29,34 @@ enum BL_Op{ SUBTRACT_A_B, SUBTRACT_B_A, UNION, INTERSECT};
 enum BL_Set{ A=0, B };
 enum itype{ ENEX, EXEN, EN, EX, NOTYPE=0, INVALID };
 
-typedef struct BL_Poly{
-	struct Polygon * pl;
-	int rel;
-	int hole;
+typedef struct bpoly{
+	Polygon * pl;
+	int rel, hole;
 	enum BL_Set set;
 	int has_entry;
-} bpoly;
+} BL_Poly;
 
-typedef struct BL_Node{
-	struct Vec co;
+typedef struct bnode{
+	vec co;
 	int flags;
-	struct BL_Node *nxt, *prv, *isx;
-	struct BL_Poly *pl;
+	struct bnode *nxt, *prv, *isx;
+	BL_Poly *pl;
 	enum itype t;
 	int entry;
-} bnode;
+} BL_Node;
 
-typedef struct BL_Graph{
-	struct BL_Node *nodes;
-	unsigned int last, size;
-	struct BL_Poly *polys;
-	struct BL_Poly *pl_a;
-	struct BL_Poly *pl_b;
-	unsigned int pl_num;
-	unsigned int inum;
-} bgraph;
+typedef struct bgraph{
+	BL_Node *nodes;
+	BL_Poly *polys;
+	BL_Poly *pl_a;
+	BL_Poly *pl_b;
+	uint last, size, pl_num, inum;
+} BL_Graph;
 
-bgraph * bl_build_graph(polygon * pl_a, polygon * pl_b);
+BL_Graph * bl_build_graph(Polygon * pl_a, Polygon * pl_b);
 
-polylist * bl_operation(struct BL_Graph * g, const enum BL_Op op);
+PolyList * bl_operation(BL_Graph * g, const enum BL_Op op);
 
-void bl_kill_graph(bgraph * g);
+void bl_kill_graph(BL_Graph * g);
 
 #endif

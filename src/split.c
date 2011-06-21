@@ -27,30 +27,30 @@
 #include "polygon.h"
 #include "split.h"
 
-struct SplitGraph * build_split_graph(struct Polygon * pl, struct Plane * pln)
+SplitGraph * build_split_graph(Polygon * pl, Plane * pln)
 {
-	struct SplitGraph * sg = (struct SplitGraph *)malloc(sizeof(struct SplitGraph));
+	SplitGraph * sg = (SplitGraph *)malloc(sizeof(SplitGraph));
 	assert(sg);
 	
 	sg->last = pl->last;
 	
-	sg->nodes = (struct SplitNode *)malloc(2 * sg->last * sizeof(struct SplitNode));
+	sg->nodes = (SplitNode *)malloc(2 * sg->last * sizeof(SplitNode));
 	assert(sg->nodes);
 	sg->r = 0;
 	sg->pl = pl;
 	sg->pln = pln;
 	
-	struct SplitNode * nd = sg->nodes;
-	struct PL_Vertex * vx;
+	SplitNode * nd = sg->nodes;
+	PolyVert * vx;
 	uint i, j;
 	for(i=(sg->last-1), j=0; j < sg->last; i=j++){
 		vx = pl->points + i;
-		nd->co = vx->co;
+		v_cpy(nd->co, vx->co);
 		nd->flags = vx->flags;
 
 		nd->nxt = sg->nodes + j;
 		nd->prv = i ? sg->nodes + i - 1 : sg->nodes + sg->last - 1;
-		nd->r = rel_point_plane(&nd->co, pln);
+		nd->r = rel_point_plane(nd->co, pln);
 
 		sg->r |= nd->r;
 
@@ -58,12 +58,12 @@ struct SplitGraph * build_split_graph(struct Polygon * pl, struct Plane * pln)
 	}
 	
 	if(sg->r&CROSS){
-		struct SplitNode * newnode;
+		SplitNode * newnode;
 		nd = sg->nodes;
 		while(nd->nxt != sg->nodes){
 			if((nd->r | nd->nxt->r) == CROSS){
 				newnode = sg->nodes + sg->last++;
-				line_intersect_plane(&nd->co, &nd->nxt->co, pln, &newnode->co);
+				line_intersect_plane(nd->co, nd->nxt->co, pln, newnode->co);
 				newnode->flags = nd->flags;
 				newnode->r = ON;
 				newnode->nxt = nd->nxt;
@@ -83,11 +83,12 @@ struct SplitGraph * build_split_graph(struct Polygon * pl, struct Plane * pln)
 
 
 	
-struct Polygon * new_split(struct SplitNode * nd)
+static Polygon * 
+new_split(SplitNode * nd)
 {
-	struct Polygon * split = pl_init(nd->pl->last);
+	Polygon * split = pl_init(nd->pl->last);
 	split->flags = nd->pl->flags | SPLIT;
-	pl_append(&split, &nd->co, nd->flags);
+	pl_append(&split, nd->co, nd->flags);
 	
 	return split;
 }
@@ -96,11 +97,11 @@ struct Polygon * new_split(struct SplitNode * nd)
  * Frees all memory occupied by a SplitGraph struct.
  */
 void 
-kill_split_graph(struct SplitGraph ** sg_pt)
+kill_split_graph(SplitGraph ** sg_pt)
 {
 	assert(sg_pt);
 	
-	struct SplitGraph * sg = *sg_pt;
+	SplitGraph * sg = *sg_pt;
 	
 	if(sg){
 		if(sg->nodes) free(sg->nodes);
@@ -120,7 +121,8 @@ struct Dist {
 /*
  * Helper function that compares Dist structs used for sorting.
  */
-int cmp_dists(const void* dst_a, const void* dst_b)
+static int 
+cmp_dists(const void* dst_a, const void* dst_b)
 {
     double d_a = ((struct Dist *)dst_a)->distance;
     double d_b = ((struct Dist *)dst_b)->distance;
@@ -132,20 +134,22 @@ int cmp_dists(const void* dst_a, const void* dst_b)
         return 0;
 }
             
-void join_holes(struct Polygon * pl, struct PL_List * holes)
+static void 
+join_holes(Polygon * pl, PolyList * holes)
 {
 	
-	vec ref= pl->points[pl->last - 1].co;
+	vec ref;
+	v_cpy(ref, pl->points[pl->last - 1].co);
 	uint i,limit= holes->last;
 	struct Dist dists[limit];
-	struct Polygon * hole = NULL;
+	Polygon * hole = NULL;
 	for (i=0; i < limit; i++){
 		hole= holes->polys[i];
 		
 		dists[i].idx= i;
 		
 		// Store the distance between the first point of the hole and the last point of the polygon.
-		dists[i].distance= dist(&hole->points[0].co, &ref);
+		dists[i].distance= dist(hole->points[0].co, ref);
 	}
 	
 	qsort(&dists, limit, sizeof(struct Dist), cmp_dists);
@@ -168,19 +172,21 @@ void join_holes(struct Polygon * pl, struct PL_List * holes)
  * distribute them to the correct polygon.
  * 
  */
-void process_splits(struct PL_List **splits_pt, enum PL_Order orig, enum axis_pair ax)
+static void 
+process_splits(PolyList **splits_pt, enum PL_Order orig, AxisPair ax)
 {
     assert(splits_pt);
     
-    struct PL_List * splits= *splits_pt;
+    PolyList * splits= *splits_pt;
     assert(splits);
     
-    struct PL_List * append = NULL,
-				   * holes = pll_init(splits->last),
-				   * parts = pll_init(holes->size);
+    PolyList * append = NULL,
+		     * holes = pll_init(splits->last),
+		     * parts = pll_init(holes->size);
 				      
-    struct Polygon * split;
+    Polygon * split;
     uint i, j;
+    int r;
     for (i=0; i < splits->last; i++){
         split= splits->polys[i];
 		
@@ -197,10 +203,8 @@ void process_splits(struct PL_List **splits_pt, enum PL_Order orig, enum axis_pa
 
 	
     if (holes->last){
-        struct PL_List * leftovers = NULL, 
-					   * holes2join = NULL;
-        struct Polygon * pl = NULL, 
-					   * hole = NULL;
+        PolyList *leftovers =  NULL, *holes2join = NULL;
+        Polygon *pl = NULL, *hole = NULL;
 		
 		// Iterate over each part and find which holes belong to it.
         for (i=0; i < parts->last; i++){
@@ -211,14 +215,16 @@ void process_splits(struct PL_List **splits_pt, enum PL_Order orig, enum axis_pa
             
             for (j=0; j < holes->last; j++){
 				
-                hole= holes->polys[j];
-                
-                if (pl_rel_point_2d(pl, &hole->points[0].co, ax, 1) & OUT){
-					// If any point of the hole is outside the part it belongs to another part.
+                hole = holes->polys[j];
+                r = pl_rel_point_2d(pl, hole->points[0].co, ax, 1);
+                if (r & OUT){
+					// If any point of the hole is outside the part it 
+					// belongs to another part.
                     pll_append(&leftovers, hole);
 				}
                 else if (hole->flags & SPLIT){
-					// If the hole was the result of a split it needs to be joined to the outline of the part.
+					// If the hole was the result of a split it needs 
+					// to be joined to the outline of the part.
                     pll_append(&holes2join, hole);
 				}
                 else{
@@ -244,27 +250,26 @@ void process_splits(struct PL_List **splits_pt, enum PL_Order orig, enum axis_pa
 }
      
 
-void split_graph(struct SplitGraph *sg, 
-				 struct PL_List * fparts, 
-				 struct PL_List * bparts)
+void 
+split_graph(SplitGraph *sg, PolyList * fparts, PolyList * bparts)
 {
 	uint maxnodes = sg->last;
-	struct Polygon * split = pl_init(maxnodes);
+	Polygon * split = pl_init(maxnodes);
 	split->flags = sg->pl->flags | SPLIT;
 	
 	
-	struct SplitNode * nd = sg->nodes;
+	SplitNode * nd = sg->nodes;
 	int fcross, bcross, R;
 	bcross = nd->r == BK || nd->r == ON;
 	fcross = !bcross;
 	
-	struct PL_List * fsplits = pll_init(maxnodes),
-				   * bsplits = pll_init(maxnodes),
-				   * poplast = fcross ? fsplits : bsplits;
+	PolyList * fsplits = pll_init(maxnodes),
+		     * bsplits = pll_init(maxnodes),
+		     * poplast = fcross ? fsplits : bsplits;
 	
 	
 	while(nd->nxt != sg->nodes){
-		pl_append(&split, &nd->co, nd->flags);
+		pl_append(&split, nd->co, nd->flags);
 		
 		if (nd->r == ON){
 			R = nd->nxt->r | nd->prv->r;
@@ -304,7 +309,7 @@ void split_graph(struct SplitGraph *sg,
 	}
 	
 	if (poplast->last > 1){
-		struct Polygon * tojoin= poplast->polys[--poplast->last];
+		Polygon * tojoin= poplast->polys[--poplast->last];
 		
 		pl_extend_verts(poplast->polys[0], tojoin->points, tojoin->last);
 		
@@ -318,7 +323,7 @@ void split_graph(struct SplitGraph *sg,
 		}
 	}
 		
-	enum axis_pair ax = pl_best_axis_pair(sg->pl);
+	AxisPair ax = pl_best_axis_pair(sg->pl);
 	enum PL_Order ord = pl_order_2d(sg->pl, ax);
 	
 	process_splits(&fsplits, ord, ax);

@@ -28,19 +28,20 @@
 #include "polygon.h"
 #include "boolean.h"
 
-bpoly * bl_parse_poly(bgraph * g, polygon * pl, enum BL_Set set, int hole)
+static BL_Poly *
+bl_parse_poly(BL_Graph * g, Polygon * pl, enum BL_Set set, int hole)
 {
     assert(pl->last > 2);
-    unsigned int i;
+    uint i;
     
     if (!hole && pl->holes){
 		for (i=0; i < pl->holes->last; i++){
           bl_parse_poly(g, pl->holes->polys[i], set, 1);
 		}
     }
-    bpoly * result= g->polys + g->pl_num++;
-    bnode * new_node, * offset= g->nodes + g->last;
-    polyvert * vx;
+    BL_Poly * result= g->polys + g->pl_num++;
+    BL_Node * new_node, * offset= g->nodes + g->last;
+    PolyVert * vx;
     for (i=0; i < pl->last; i++){
         vx= pl->points + i;
         new_node= offset + i;
@@ -48,7 +49,7 @@ bpoly * bl_parse_poly(bgraph * g, polygon * pl, enum BL_Set set, int hole)
         new_node->prv= new_node - 1;
         //new_node->isx= NULL;
         //new_node->t= NOTYPE;
-        new_node->co= vx->co;
+        v_cpy(new_node->co, vx->co);
         new_node->flags= vx->flags;
         new_node->pl= result;
     }
@@ -60,14 +61,14 @@ bpoly * bl_parse_poly(bgraph * g, polygon * pl, enum BL_Set set, int hole)
     return result;
 }
 
-int bl_expand_graph(bgraph * g, unsigned int count)
+int bl_expand_graph(BL_Graph * g, uint count)
 {
-    unsigned int limit= g->last;
-    unsigned int nxt_diffs[limit];
-    unsigned int prv_diffs[limit];
-    unsigned int isx_diffs[limit];
-    unsigned int i;
-    bnode * nd, * old_base= g->nodes;
+    uint limit= g->last;
+    uint nxt_diffs[limit];
+    uint prv_diffs[limit];
+    uint isx_diffs[limit];
+    uint i;
+    BL_Node * nd, * old_base= g->nodes;
     
     for (i=0; i < limit; i++){
         nd= g->nodes + i;
@@ -78,7 +79,7 @@ int bl_expand_graph(bgraph * g, unsigned int count)
     
     g->size+= count;
     
-    g->nodes= (bnode *)realloc(g->nodes, g->size * sizeof(bnode));
+    g->nodes= (BL_Node *)realloc(g->nodes, g->size * sizeof(BL_Node));
     assert(g->nodes);
     
     if (g->nodes != old_base){
@@ -94,12 +95,12 @@ int bl_expand_graph(bgraph * g, unsigned int count)
         return 0;
 }
 
-unsigned int bl_find_intersections(bgraph * g)
+uint bl_find_intersections(BL_Graph * g)
 {
-    bnode *a0, *a1, *b0, *b1, *isect_a=NULL, *isect_b=NULL;
+    BL_Node *a0, *a1, *b0, *b1, *isect_a=NULL, *isect_b=NULL;
     vec u, w, v, I;
     double ratio_a, ratio_b, d;
-    unsigned int i, j;
+    uint i, j;
     
     for(i=0; i < g->last; i++){
         
@@ -107,9 +108,9 @@ unsigned int bl_find_intersections(bgraph * g)
         
         if (a0->pl->set == B) continue;
         
-        a1= a0->nxt;
+        a1 = a0->nxt;
         
-        v_sub(&u, &a1->co, &a0->co);
+        v_sub(u, a1->co, a0->co);
         
         for(j=0; j < g->last; j++){
             
@@ -123,23 +124,23 @@ unsigned int bl_find_intersections(bgraph * g)
                 b1->isx == a0 || b1->isx == a1)
                    continue;
             
-            v_sub(&v, &b1->co, &b0->co);
+            v_sub(v, b1->co, b0->co);
             
-            d= v_perp(&u, &v, XY);
+            d= v_perp(u, v, XY);
             
             if (fabs(d) < E) continue;
             
-            v_sub(&w, &a0->co, &b0->co);
+            v_sub(w, a0->co, b0->co);
             
-            ratio_a= v_perp(&v, &w, XY) / d;
+            ratio_a = v_perp(v, w, XY) / d;
             
             if (-0.1 < ratio_a && ratio_a < 1.1){
 				
-                ratio_b= v_perp(&u, &w, XY) / d;
+                ratio_b = v_perp(u, w, XY) / d;
                 
                 if (-0.1 < ratio_b && ratio_b < 1.1){
-                    v_scale(&I, &u, ratio_a);
-                    v_add(&I, &I, &a0->co);
+                    v_scale(I, u, ratio_a);
+                    v_add(I, I, a0->co);
                 }
                 else{
 					continue;
@@ -160,7 +161,7 @@ unsigned int bl_find_intersections(bgraph * g)
             
             isect_a= isect_b= NULL;
             
-            if (same_2d(&a0->co, &I, XY)){
+            if (same_2d(a0->co, I, XY)){
                 if (!a0->isx){
                     isect_a= a0;
 				}
@@ -168,7 +169,7 @@ unsigned int bl_find_intersections(bgraph * g)
                     continue;
 				}
             }
-            else if (same_2d(&a1->co, &I, XY)){
+            else if (same_2d(a1->co, I, XY)){
                 if (!a1->isx){
                     isect_a= a1;
 				}
@@ -176,11 +177,11 @@ unsigned int bl_find_intersections(bgraph * g)
                     continue;
 				}
             }
-            else if (!point_in_segment_2d(&I, &a0->co, &a1->co, XY)){
+            else if (!point_in_segment_2d(I, a0->co, a1->co, XY)){
                 continue;
 			}
             
-            if (same_2d(&b0->co, &I, XY)){
+            if (same_2d(b0->co, I, XY)){
                 if (!b0->isx){
                     isect_b= b0;
                 }
@@ -188,13 +189,13 @@ unsigned int bl_find_intersections(bgraph * g)
 					continue;
 				}
             }
-            else if (same_2d(&b1->co, &I, XY)){
+            else if (same_2d(b1->co, I, XY)){
                 if (!b1->isx)
                     isect_b= b1;
                 else if (ratio_b > 1.0)
                     continue;
             }
-            else if (!point_in_segment_2d(&I, &b0->co, &b1->co, XY))
+            else if (!point_in_segment_2d(I, b0->co, b1->co, XY))
                 continue;
             
             if (!isect_a){
@@ -203,19 +204,19 @@ unsigned int bl_find_intersections(bgraph * g)
                 isect_a->prv= a0;
                 a0->nxt= isect_a;
                 a1->prv= isect_a;
-                isect_a->co= I;
+                v_cpy(isect_a->co, I);
                 isect_a->flags= a0->flags;
                 isect_a->pl= a0->pl;
                 //isect_a->t= NOTYPE;
             
-                v_sub(&u, &I, &a0->co);
+                v_sub(u, I, a0->co);
                 a1= isect_a;
             }
             if (!isect_b){
                 isect_b= g->nodes + g->last++;
                 isect_b->nxt= b1;
                 isect_b->prv= b0;
-                isect_b->co= I;
+                v_cpy(isect_b->co, I);
                 isect_b->flags= b0->flags;
                 isect_b->pl= b0->pl;
                 b0->nxt= isect_b;
@@ -231,27 +232,29 @@ unsigned int bl_find_intersections(bgraph * g)
     return g->inum;
 }
 
-void bl_classify_intersections(bgraph * g)
+void bl_classify_intersections(BL_Graph * g)
 {
-    unsigned int i;
-    bnode * nd;
+    uint i;
+    BL_Node * nd;
     vec mid;
     int rnext, rprev, *R;
-    bpoly * other;
+    BL_Poly * other;
         
     for (i=0; i < g->last; i++){
-        nd= g->nodes + i;
+        nd = g->nodes + i;
         
         if (!nd->isx) continue;
         
         other= nd->isx->pl;
         if (nd->prv->isx &&
-            ((nd->prv->isx == nd->isx->prv) ||
-             (nd->prv->isx == nd->isx->nxt)))
+		  ((nd->prv->isx == nd->isx->prv) ||
+		   (nd->prv->isx == nd->isx->nxt)))
                 rprev= ON;
         else{
-            midpoint(&mid, &nd->co, &nd->prv->co);
-            rprev= pl_rel_point_2d(other->pl, &mid, XY, 0);
+            midpoint(mid, nd->co, nd->prv->co);
+            
+            rprev = pl_rel_point_2d(other->pl, mid, XY, 0);
+            
             if (other->hole){
                 if (rprev == OUT)
                     rprev = IN;
@@ -261,12 +264,15 @@ void bl_classify_intersections(bgraph * g)
         }
         
         if (nd->nxt->isx &&
-            ((nd->nxt->isx == nd->isx->prv) ||
-             (nd->nxt->isx == nd->isx->nxt)))
-                rnext= ON;
+          ((nd->nxt->isx == nd->isx->prv) ||
+           (nd->nxt->isx == nd->isx->nxt)))
+                rnext = ON;
         else{
-            midpoint(&mid, &nd->co, &nd->nxt->co);
-            rnext= pl_rel_point_2d(other->pl, &mid, XY, 0);
+            
+            midpoint(mid, nd->co, nd->nxt->co);
+            
+            rnext= pl_rel_point_2d(other->pl, mid, XY, 0);
+            
             if (other->hole){
                 if (rnext == OUT)
                     rnext = IN;
@@ -302,21 +308,21 @@ void bl_classify_intersections(bgraph * g)
     }
 }
 
-bgraph * bl_build_graph(polygon * pl_a, polygon * pl_b)
+BL_Graph * bl_build_graph(Polygon * pl_a, Polygon * pl_b)
 {
-    bgraph * g= (bgraph*)calloc(1, sizeof(bgraph));
+    BL_Graph * g= (BL_Graph*)calloc(1, sizeof(BL_Graph));
     assert(g);
     
     // Allocate enough nodes so no expanding is needed in most cases.
     g->size= (pl_a->last + pl_b->last + pll_count_points(pl_a->holes) + pll_count_points(pl_b->holes)) * 4;
-    g->nodes= (struct BL_Node*)calloc(g->size, sizeof(struct BL_Node));
+    g->nodes= (BL_Node*)calloc(g->size, sizeof(BL_Node));
     assert(g->nodes);
 
 	
-    unsigned int total_polys= 2;
+    uint total_polys= 2;
     total_polys+= (pl_a->holes) ? pl_a->holes->last : 0;
     total_polys+= (pl_b->holes) ? pl_b->holes->last : 0;
-    g->polys= (bpoly *)calloc(total_polys, sizeof(bpoly)); 
+    g->polys= (BL_Poly *)calloc(total_polys, sizeof(BL_Poly)); 
 	assert(g->polys);
 
     g->pl_a= bl_parse_poly(g, pl_a, A, 0);
@@ -325,18 +331,20 @@ bgraph * bl_build_graph(polygon * pl_a, polygon * pl_b)
         bl_classify_intersections(g);
     }
     else{
-        g->pl_a->rel= pl_rel_point_2d(pl_b, &pl_a->points[0].co, XY, 0);
-        g->pl_a->rel= pl_rel_point_2d(pl_a, &pl_b->points[0].co, XY, 0);
+        g->pl_a->rel= pl_rel_point_2d(pl_b, pl_a->points[0].co, XY, 0);
+        g->pl_a->rel= pl_rel_point_2d(pl_a, pl_b->points[0].co, XY, 0);
     }
     
     return g;
 }
 
-polylist * bl_handle_out_in(polygon * pl_out, polygon * pl_in){
+static PolyList * 
+bl_handle_out_in(Polygon * pl_out, Polygon * pl_in){
     return pll_init(10);
 }
 
-void bl_special_case(bgraph * g, enum BL_Op op, polylist ** parts) 
+static void 
+bl_special_case(BL_Graph * g, enum BL_Op op, PolyList ** parts) 
 {
     int a= g->pl_a->rel;
     int b= g->pl_b->rel;
@@ -441,12 +449,12 @@ void bl_special_case(bgraph * g, enum BL_Op op, polylist ** parts)
  * Checks if a node can be used as an entry point for a given boolean 
  * operation.
  * 
- * @param bnode nd The node to check.
+ * @param BL_Node nd The node to check.
  * @param BL_Op op The operation for which to check if node is entry point.
  * 
  * @return int
  */
-int bl_entry_point(bnode * nd, enum BL_Op op)
+int bl_entry_point(BL_Node * nd, enum BL_Op op)
 {
     if (!nd->isx)
         return 0;
@@ -498,24 +506,25 @@ int bl_entry_point(bnode * nd, enum BL_Op op)
  * 
  * @return Polylist* Pointer to a polylist struct of resulting polys.
  */
-polylist * bl_operation(bgraph * g, enum BL_Op op)
+PolyList * 
+bl_operation(BL_Graph * g, enum BL_Op op)
 {
     assert(g);
     
-    polylist * parts= NULL;
+    PolyList * parts= NULL;
     
     bl_special_case(g, op, &parts);
     
     //check special case
     if (parts) return parts;
     
-    polylist * holes= NULL;
-    polyvert * vx;
-    bnode * nd;
-    polygon * part;
-    unsigned int entry_points= 0;
-    unsigned int limit=g->last;
-    unsigned int i, j;
+    PolyList * holes = NULL;
+    PolyVert * vx;
+    BL_Node * nd;
+    Polygon * part;
+    uint entry_points = 0;
+    uint limit = g->last;
+    uint i, j;
     //reset entry points
     for (i=0; i < limit; i++)
         entry_points+= bl_entry_point(g->nodes + i, op);
@@ -523,7 +532,7 @@ polylist * bl_operation(bgraph * g, enum BL_Op op)
 
     if (entry_points){
         int lt;
-        bnode * start;
+        BL_Node * start;
         parts= pll_init(entry_points);
         holes= pll_init(entry_points);
         
@@ -541,7 +550,8 @@ polylist * bl_operation(bgraph * g, enum BL_Op op)
                         // printf("endless walk, num of steps: %d\n", j);
                         break;
                     }
-                    vx= pl_append(&part, &nd->co, nd->flags);
+                    
+                    vx= pl_append(&part, nd->co, nd->flags);
 
                     if (nd->isx){
                         nd->entry= --nd->isx->entry;
@@ -590,8 +600,8 @@ polylist * bl_operation(bgraph * g, enum BL_Op op)
         // printf("found %d parts\n", parts->last);
         // printf("found %d holes\n", holes->last);
     }
-    //handle polygons that had no entry points
-    bpoly * bpl;
+    //handle Polygons that had no entry points
+    BL_Poly * bpl;
     for (i=0; i < g->pl_num; i++){
         bpl= g->polys + i;
         if (!bpl->has_entry){
@@ -625,22 +635,24 @@ polylist * bl_operation(bgraph * g, enum BL_Op op)
         }
     }
     
-    polygon * hole, * parthole;
+    Polygon *hole, *parthole;
     int c;
-    unsigned int k;
+    uint k;
     for (i=0; i < holes->last; i++){
         hole= holes->polys[i];
         for (j=0; j < parts->last; j++){
             part= parts->polys[j];
-            //get some classification other than on if possible;
+            
+            // Get some classification other than ON if possible;
             c= ON;
             for (k=0; c == ON && k < hole->last; k++)
-                c= pl_rel_point_2d(part, &hole->points[k].co, XY, 1); 
+                c= pl_rel_point_2d(part, hole->points[k].co, XY, 1); 
+            
             if (c==IN){
-                polylist * newholes= pll_init(part->holes->size + holes->size);
+                PolyList *newholes = pll_init(part->holes->size + holes->size);
                 for (k=0; k < part->holes->last; k++){
                     parthole= part->holes->polys[k];
-                    if (pl_rel_point_2d(hole, &parthole->points[0].co, XY, 0) != IN)
+                    if (pl_rel_point_2d(hole, parthole->points[0].co, XY, 0) != IN)
                         pll_append(&newholes, parthole);
                     else
                         pl_kill(&parthole);
@@ -668,7 +680,7 @@ polylist * bl_operation(bgraph * g, enum BL_Op op)
 /*
  * Frees graph allocated memory.
  */
-void bl_kill_graph(bgraph * g)
+void bl_kill_graph(BL_Graph * g)
 {
     free(g->nodes);
     free(g->polys);

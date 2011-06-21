@@ -23,99 +23,99 @@
 #include "math.h"
 #include "bounds.h"
 
-void check_bounds(bounds * b, const vec * const p)
+void check_bounds(Bounds * b, const vec p)
 {
     assert(b);
     assert(p);
-    if(b->min.x > p->x)
-        b->min.x= p->x;
-    else if(b->max.x < p->x)
-        b->max.x= p->x;
+    if(b->min[0] > p[0])
+        b->min[0]= p[0];
+    else if(b->max[0] < p[0])
+        b->max[0]= p[0];
 
-    if(b->min.y > p->y)
-        b->min.y= p->y;
-    else if(b->max.y < p->y)
-        b->max.y= p->y;
+    if(b->min[1] > p[1])
+        b->min[1]= p[1];
+    else if(b->max[1] < p[1])
+        b->max[1]= p[1];
 
-    if(b->min.z > p->z)
-        b->min.z= p->z;
-    else if(b->max.z < p->z)
-        b->max.x= p->z;
+    if(b->min[2] > p[2])
+        b->min[2]= p[2];
+    else if(b->max[2] < p[2])
+        b->max[0]= p[2];
 }
 
-int disjoint_2d(const bounds * b0, const bounds * b1, enum axis_pair ax)
+int disjoint_2d(const Bounds * b0, const Bounds * b1, AxisPair ax)
 {
     switch (ax){
         case XY:
-            return (b0->min.x > b1->max.x || b0->max.x < b1->min.x ||
-                    b0->min.y > b1->max.y || b0->max.y < b1->min.y);
+            return (b0->min[0] > b1->max[0] || b0->max[0] < b1->min[0] ||
+                    b0->min[1] > b1->max[1] || b0->max[1] < b1->min[1]);
             break;
         case XZ:
-            return (b0->min.x > b1->max.x || b0->max.x < b1->min.x ||
-                    b0->min.z > b1->max.z || b0->max.z < b1->min.z);
+            return (b0->min[0] > b1->max[0] || b0->max[0] < b1->min[0] ||
+                    b0->min[2] > b1->max[2] || b0->max[2] < b1->min[2]);
             break;
         case YZ:
-            return (b0->min.y > b1->max.y || b0->max.y < b1->min.y ||
-                    b0->min.z > b1->max.z || b0->max.z < b1->min.z);
+            return (b0->min[1] > b1->max[1] || b0->max[1] < b1->min[1] ||
+                    b0->min[2] > b1->max[2] || b0->max[2] < b1->min[2]);
             break;
     }
     return 0;
 }
 
-int disjoint_3d(const bounds * b0, const bounds * b1)
+int disjoint_3d(const Bounds * b0, const Bounds * b1)
 {
     assert(b0);
     assert(b1);
-    return !(((b0->min.x < b1->min.x && b1->min.x < b0->max.x) ||
-             (b0->min.x < b1->max.x && b1->max.x < b0->max.x) ||
-             (b1->min.x < b0->min.x && b0->min.x < b1->max.x) ||
-             (b1->min.x < b0->max.x && b0->max.x < b1->max.x)) &&
-            ((b0->min.y < b1->min.y && b1->min.y < b0->max.y) ||
-             (b0->min.y < b1->max.y && b1->max.y < b0->max.y) ||
-             (b1->min.y < b0->min.y && b0->min.y < b1->max.y) ||
-             (b1->min.y < b0->max.y && b0->max.y < b1->max.y)) &&
-            ((b0->min.z < b1->min.z && b1->min.z < b0->max.z) ||
-             (b0->min.z < b1->max.z && b1->max.z < b0->max.z) ||
-             (b1->min.z < b0->min.z && b0->min.z < b1->max.z) ||
-             (b1->min.z < b0->max.z && b0->max.z < b1->max.z)));
+    return !(((b0->min[0] < b1->min[0] && b1->min[0] < b0->max[0]) ||
+              (b0->min[0] < b1->max[0] && b1->max[0] < b0->max[0]) ||
+              (b1->min[0] < b0->min[0] && b0->min[0] < b1->max[0]) ||
+              (b1->min[0] < b0->max[0] && b0->max[0] < b1->max[0])) &&
+             ((b0->min[1] < b1->min[1] && b1->min[1] < b0->max[1]) ||
+              (b0->min[1] < b1->max[1] && b1->max[1] < b0->max[1]) ||
+              (b1->min[1] < b0->min[1] && b0->min[1] < b1->max[1]) ||
+              (b1->min[1] < b0->max[1] && b0->max[1] < b1->max[1])) &&
+             ((b0->min[2] < b1->min[2] && b1->min[2] < b0->max[2]) ||
+              (b0->min[2] < b1->max[2] && b1->max[2] < b0->max[2]) ||
+              (b1->min[2] < b0->min[2] && b0->min[2] < b1->max[2]) ||
+              (b1->min[2] < b0->max[2] && b0->max[2] < b1->max[2])));
 }
 
-int point_in_bounds(const bounds * b, const vec * const p)
+int point_in_bounds(const Bounds * b, const vec p)
 {
-    return p->x > b->min.x - ZEROLENGTH &&
-           p->x < b->max.x + ZEROLENGTH &&
-           p->y > b->min.y - ZEROLENGTH &&
-           p->y < b->max.y + ZEROLENGTH &&
-           p->z > b->min.z - ZEROLENGTH &&
-           p->z < b->max.z + ZEROLENGTH;
+    return p[0] > b->min[0] - ZEROLENGTH &&
+           p[0] < b->max[0] + ZEROLENGTH &&
+           p[1] > b->min[1] - ZEROLENGTH &&
+           p[1] < b->max[1] + ZEROLENGTH &&
+           p[2] > b->min[2] - ZEROLENGTH &&
+           p[2] < b->max[2] + ZEROLENGTH;
 }
 
-int point_in_bounds_2d(const bounds * b, const vec * const p, enum axis_pair ax)
+int point_in_bounds_2d(const Bounds * b, const vec p, AxisPair ax)
 {
     switch (ax){
         case XY:
-            return !(p->x < b->min.x - ZEROLENGTH ||
-                     p->x > b->max.x + ZEROLENGTH ||
-                     p->y < b->min.y - ZEROLENGTH ||
-                     p->y > b->max.y + ZEROLENGTH);
+            return !(p[0] < b->min[0] - ZEROLENGTH ||
+                     p[0] > b->max[0] + ZEROLENGTH ||
+                     p[1] < b->min[1] - ZEROLENGTH ||
+                     p[1] > b->max[1] + ZEROLENGTH);
             break;
         case XZ:
-            return !(p->x < b->min.x - ZEROLENGTH ||
-                     p->x > b->max.x + ZEROLENGTH ||
-                     p->z < b->min.z - ZEROLENGTH ||
-                     p->z > b->max.z + ZEROLENGTH);
+            return !(p[0] < b->min[0] - ZEROLENGTH ||
+                     p[0] > b->max[0] + ZEROLENGTH ||
+                     p[2] < b->min[2] - ZEROLENGTH ||
+                     p[2] > b->max[2] + ZEROLENGTH);
             break;
         case YZ:
-            return !(p->y < b->min.y - ZEROLENGTH ||
-                     p->y > b->max.y + ZEROLENGTH ||
-                     p->z < b->min.z - ZEROLENGTH ||
-                     p->z > b->max.z + ZEROLENGTH);
+            return !(p[1] < b->min[1] - ZEROLENGTH ||
+                     p[1] > b->max[1] + ZEROLENGTH ||
+                     p[2] < b->min[2] - ZEROLENGTH ||
+                     p[2] > b->max[2] + ZEROLENGTH);
             break;
         default:
-            return !(p->x < b->min.x - ZEROLENGTH ||
-                     p->x > b->max.x + ZEROLENGTH ||
-                     p->y < b->min.y - ZEROLENGTH ||
-                     p->y > b->max.y + ZEROLENGTH);
+            return !(p[0] < b->min[0] - ZEROLENGTH ||
+                     p[0] > b->max[0] + ZEROLENGTH ||
+                     p[1] < b->min[1] - ZEROLENGTH ||
+                     p[1] > b->max[1] + ZEROLENGTH);
             break;
     }
 }

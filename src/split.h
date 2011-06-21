@@ -24,28 +24,26 @@
 #include "math.h"
 #include "polygon.h"
 
-struct SplitNode{
-	struct Vec co;
+typedef struct spl_node{
+	vec co;
 	int r, flags;
-	struct Polygon * pl;
-	struct SplitNode * nxt;
-	struct SplitNode * prv;
-};
+	Polygon * pl;
+	struct spl_node * nxt;
+	struct spl_node * prv;
+} SplitNode;
 
-struct SplitGraph{
-	struct SplitNode * nodes;
+typedef struct spl_graph{
+	SplitNode * nodes;
 	uint last;
-	struct Plane *pln;
-	struct Polygon *pl;
+	Plane *pln;
+	Polygon *pl;
 	int r;
-};
+} SplitGraph;
 
-struct SplitGraph * build_split_graph(struct Polygon * pl, struct Plane * pln);
+SplitGraph * build_split_graph(Polygon * pl, Plane * pln);
 
-void kill_split_graph(struct SplitGraph ** sg);
+void kill_split_graph(SplitGraph ** sg);
 
-struct Polygon * new_split(struct SplitNode * nd);
-
-void split_graph(struct SplitGraph *sg, struct PL_List * fparts, struct PL_List * bparts);
+void split_graph(SplitGraph *sg, PolyList * fparts, PolyList * bparts);
 
 #endif

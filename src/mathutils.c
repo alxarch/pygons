@@ -25,7 +25,7 @@
 #include "globals.h"
 #include "mathutils.h"
 
-//# matrix  
+// matrix ______________________________________________________________  
 
 
 void mx_copy(matrix dst_mx, matrix src_mx)
@@ -276,7 +276,9 @@ void mx_mul_scalar(matrix dst, matrix src, const double s)
         *dst_pt++= (*src_pt++) * s;
 }
 
-void v_mul_mx(vec * dest, const vec * const v, matrix mx)
+// Vector ______________________________________________________________
+
+void v_mul_mx(Vec * dest, const Vec * const v, matrix mx)
 {
     vec tmp;
     tmp.x= (mx[0][0] * v->x) + (mx[1][0] * v->y) + (mx[2][0] * v->z) + (mx[3][0]);
@@ -285,28 +287,28 @@ void v_mul_mx(vec * dest, const vec * const v, matrix mx)
     v_copy(dest, &tmp);
 }
 
-void v_zero(vec * v)
+void v_zero(Vec * v)
 {
     v->x= 0.0;
     v->y= 0.0;
     v->z= 0.0;
 }
 
-void v_add(vec * dest, const vec * const v0, const vec * const v1)
+void v_add(Vec * dest, const Vec * const v0, const Vec * const v1)
 {
     dest->x= v0->x + v1->x;
     dest->y= v0->y + v1->y;
     dest->z= v0->z + v1->z;
 }
 
-void v_sub(vec * dest, const vec * v0, const vec * const v1)
+void v_sub(Vec * dest, const Vec * v0, const Vec * const v1)
 {
     dest->x= v0->x - v1->x;
     dest->y= v0->y - v1->y;
     dest->z= v0->z - v1->z;
 }
 
-void v_scale(vec * dest, const vec * const v, const double s)
+void v_scale(Vec * dest, const Vec * const v, const double s)
 {
     dest->x= v->x * s;
     dest->y= v->y * s;
@@ -314,21 +316,21 @@ void v_scale(vec * dest, const vec * const v, const double s)
 }
 
 
-double v_dot(const vec * const v0, const vec * const v1)
+double v_dot(const Vec * const v0, const Vec * const v1)
 {
     return v0->x * v1->x + v0->y * v1->y + v0->z * v1->z;
 }
 
-void v_cross(vec * dest, const vec * const v0, const vec * const v1)
+void v_cross(Vec * dest, const Vec * const v0, const Vec * const v1)
 {
-    vec c;
+    Vec c;
     c.x = (v0->y - v1->y) * (v0->z + v1->z);
     c.y = (v0->z - v1->z) * (v0->x + v1->x);
     c.z = (v0->x - v1->x) * (v0->y + v1->y);
     v_copy(dest, &c);
 }
 
-int same_2d( const vec * const v0, const vec * const v1, enum axis_pair ax)
+int same_2d( const Vec * const v0, const Vec * const v1, enum axis_pair ax)
 {
     int r;
     switch (ax){
@@ -351,14 +353,14 @@ int same_2d( const vec * const v0, const vec * const v1, enum axis_pair ax)
     return r;
 }
 
-int same_3d( const vec * const v0, const vec * const v1)
+int same_3d( const Vec * const v0, const Vec * const v1)
 {
     return (fabs(v0->x - v1->x) < ZEROLENGTH &&
             fabs(v0->y - v1->y) < ZEROLENGTH &&
             fabs(v0->z - v1->z) < ZEROLENGTH);
 }
 
-double v_perp(const vec * const v0,  const vec * const v1, enum axis_pair ax)
+double v_perp(const Vec * const v0,  const Vec * const v1, enum axis_pair ax)
 {
     switch (ax){
         case XY:
@@ -372,9 +374,9 @@ double v_perp(const vec * const v0,  const vec * const v1, enum axis_pair ax)
     }
 }
 
-int rel_point_plane(const vec * const p, const plane * const pn)
+int rel_point_plane(const Vec * const p, const plane * const pn)
 {
-    vec tmp;
+    Vec tmp;
     v_sub(&tmp, p, &pn->point);
     double d= v_dot(&tmp, &pn->normal);
     if (d > ZEROLENGTH)
@@ -385,12 +387,12 @@ int rel_point_plane(const vec * const p, const plane * const pn)
         return ON;
 }
 
-double v_length(const vec * const v)
+double v_length(const Vec * const v)
 {
     return sqrt(v_dot(v, v));
 }
 
-void v_normal(const vec * const v, vec *dest)
+void v_normal(const Vec * const v, Vec *dest)
 {
     double L= v_length(v);
     if (fabs(L) > E)
@@ -399,31 +401,31 @@ void v_normal(const vec * const v, vec *dest)
         v_zero(dest);
 }
 
-void midpoint(vec *dest, const vec * const v0, const vec * const v1)
+void midpoint(Vec *dest, const Vec * const v0, const Vec * const v1)
 {
-    vec tmp;
+    Vec tmp;
     v_sub(&tmp, v1, v0);
     v_scale(&tmp, &tmp, 0.5);
     v_add(dest, v0, &tmp);
 }
 
-double dist( const vec * const v0, const vec * const v1)
+double dist( const Vec * const v0, const Vec * const v1)
 {
-    vec tmp;
+    Vec tmp;
     v_sub(&tmp, v1, v0);
     return v_length(&tmp);
 }
 
-// vector copy methods _________________________________________________
+// Vector copy methods _________________________________________________
 
-void v_copy(vec *dest, const vec * const src)
+void v_copy(Vec *dest, const Vec * const src)
 {
     dest->x= src->x;
     dest->y= src->y;
     dest->z= src->z;
 }
 
-void v_swp_xy(vec *dest, const vec * const src)
+void v_swp_xy(Vec *dest, const Vec * const src)
 {
     double tmp= src->x;
     dest->x= src->y;
@@ -431,7 +433,7 @@ void v_swp_xy(vec *dest, const vec * const src)
     dest->z= src->z;
 }
 
-void v_swp_xz(vec *dest, const vec * const src)
+void v_swp_xz(Vec *dest, const Vec * const src)
 {
     double tmp= src->x;
     dest->x= src->z;
@@ -439,7 +441,7 @@ void v_swp_xz(vec *dest, const vec * const src)
     dest->z= tmp;
 }
 
-void v_swp_yz(vec *dest, const vec * const src)
+void v_swp_yz(Vec *dest, const Vec * const src)
 {
     double tmp= src->z;
     dest->x= src->x;
@@ -447,28 +449,28 @@ void v_swp_yz(vec *dest, const vec * const src)
     dest->z= tmp;
 }
 
-void v_flat_x(vec *dest, const vec * const src)
+void v_flat_x(Vec *dest, const Vec * const src)
 {
     dest->x= 0.0;
     dest->y= src->y;
     dest->z= src->z;
 }
 
-void v_flat_y(vec *dest, const vec * const src)
+void v_flat_y(Vec *dest, const Vec * const src)
 {
     dest->x= src->x;
     dest->y= 0.0;
     dest->z= src->z;
 }
 
-void v_flat_z(vec *dest, const vec * const src)
+void v_flat_z(Vec *dest, const Vec * const src)
 {
     dest->x= src->x;
     dest->y= src->y;
     dest->z= 0.0;
 }
 
-void v_flat_persp(vec *dest, const vec * const src)
+void v_flat_persp(Vec *dest, const Vec * const src)
 {
     double z= src->z; 
     if (fabs(z) < E)
@@ -480,20 +482,20 @@ void v_flat_persp(vec *dest, const vec * const src)
     }
 }
 
-void v_print(vec v)
+void v_print(Vec v)
 {
-    printf("vec: %.4f, %.4f, %.4f\n", v.x, v.y, v.z);
+    printf("Vec: %.4f, %.4f, %.4f\n", v.x, v.y, v.z);
 }
 
 
 // other methods _______________________________________________________
 
-int point_in_segment_2d( const vec * const p, 
-						 const vec * const p0,  
-						 const vec * const p1, 
+int point_in_segment_2d( const Vec * const p, 
+						 const Vec * const p0,  
+						 const Vec * const p1, 
 						 const enum axis_pair ax)
 {
-    vec diff;
+    Vec diff;
     v_sub(&diff, p1, p0);
     if (ax == XZ){
         if (fabs(diff.x) > fabs(diff.z))
@@ -521,12 +523,12 @@ int point_in_segment_2d( const vec * const p,
     }
 }
 
-int line_intersect_plane( const vec * const p0, 
-						  const vec * const p1,
+int line_intersect_plane( const Vec * const p0, 
+						  const Vec * const p1,
                           const plane * const pn, 
-                          vec * isx)
+                          Vec * isx)
 {
-    vec u, w;
+    Vec u, w;
     v_sub(&u, p1, p0);
     v_sub(&w, p0, &pn->point);
     double d= v_dot(&pn->normal, &w);
@@ -544,18 +546,18 @@ int line_intersect_plane( const vec * const p0,
     return 1;
 }
 
-float v_angle(const vec * const v0, const vec * const v1)
+float v_angle(const Vec * const v0, const Vec * const v1)
 {
-	vec n0, n1;
+	Vec n0, n1;
 	v_normal(v0, &n0);
 	v_normal(v1, &n1);
 	float angle= acos(v_dot(&n0, &n1));
 	return angle * RAD2DEG;
 }
 
-float v_angle_r(const vec * const v0, const vec * const v1)
+float v_angle_r(const Vec * const v0, const Vec * const v1)
 {
-	vec n0, n1;
+	Vec n0, n1;
 	v_normal(v0, &n0);
 	v_normal(v1, &n1);
 	float angle= acos(v_dot(&n0, &n1));

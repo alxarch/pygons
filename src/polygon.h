@@ -36,29 +36,29 @@ enum PL_Flags{
 	SPLIT=32 
 };
 
-struct Polygon;
+struct polygon;
 
-typedef struct PL_List{
-	struct Polygon ** polys;
+typedef struct polylist{
+	struct polygon ** polys;
 	uint last, size;
-} polylist;
+} PolyList;
 
-typedef struct PL_Vertex{
+typedef struct polyvert{
 	vec co;
 	int flags;
-} polyvert;
+} PolyVert;
 
-typedef struct Polygon{
-	polyvert * points;
+typedef struct polygon{
+	struct polyvert * points;
 	uint size, last;
-	struct Bounds bb;
-	struct PL_List *holes;
+	struct bounds bb;
+	struct polylist *holes;
 	int flags;
-} polygon;
+} Polygon;
 
-polygon * pl_init(const uint count);
+Poly * pl_init(const uint count);
 
-polygon * pl_copy(const polygon * pl, void (*copy_method)(vec * dest, const vec * src), const int holes);
+Poly * pl_copy(const Polygon * pl, void (*copy_method)(vec * dest, const vec * src), const int holes);
 
 void pl_kill(polygon ** pl);
 

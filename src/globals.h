@@ -37,7 +37,7 @@
 #define ZEROLENGTH 4E-1
 #define ZEROAREA 5E-1
 
-enum axis_pair{ XY, XZ, YZ};
+typedef enum axis_pair{ XY, XZ, YZ} AxisPair;
 enum R_Mode{ORTHO, PERSP};
 
 #endif

@@ -24,14 +24,14 @@
 #include "globals.h"
 #include "mathutils.h"
 
-typedef struct Bounds{
+typedef struct bounds{
     vec min;
     vec max;
-} bounds;
+} Bounds;
 
-void check_bounds(bounds * b, const vec * const point);
-int disjoint_2d(const bounds * b0, const bounds * b1, enum axis_pair ax);
-int disjoint_3d(const bounds * b0, const bounds * b1);
-int point_in_bounds(const bounds * b0, const vec * const p);
-int point_in_bounds_2d(const bounds * b0, const vec * const p, enum axis_pair ax);
+void check_bounds(Bounds * b, const Vec * const point);
+int disjoint_2d(const Bounds * b0, const Bounds * b1, AxisPair ax);
+int disjoint_3d(const Bounds * b0, const Bounds * b1);
+int point_in_bounds(const Bounds * b0, const Vec * const p);
+int point_in_bounds_2d(const Bounds * b0, const Vec * const p, AxisPair ax);
 #endif

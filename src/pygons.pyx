@@ -226,7 +226,7 @@ cdef class Plane:
     property point:
         def __get__(self):
             cdef Vector result = Vector()
-            c.v_copy(result.v, &self.pn.point)
+            result.wrap(&self.pn.point)
             return result
 
         def __set__(self, value):
